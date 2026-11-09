@@ -10,8 +10,7 @@ A browser dashboard shows statistics for the latest lecture.
 The project originated in AV321 Computer Networks at the Indian Institute of Space Science and Technology.
 The repository contains the web application, not dedicated IoT device firmware.
 
-Do not expose this application to the public internet. It has no authentication or access controls.
-Do not publish the existing Git history until you resolve the blockers in [PUBLICATION_REVIEW.md](PUBLICATION_REVIEW.md).
+
 
 ## Features
 
