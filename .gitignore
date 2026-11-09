@@ -1,0 +1,49 @@
+# SPDX-FileCopyrightText: 2026 Siddhant Tiwari
+# SPDX-License-Identifier: AGPL-3.0-only
+
+# Local credentials, certificates, and environment configuration
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.pfx
+*.crt
+/private/
+
+# Lecture transcripts, ratings, uploaded recordings, and database sidecars
+/uploads/
+*.db
+*.db-*
+*.sqlite
+*.sqlite-*
+*.sqlite3
+*.sqlite3-*
+*.log
+/dumps/
+
+# Python environments, bytecode, tests, and build output
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+build/
+dist/
+*.egg-info/
+.cache/
+
+# Local editor and operating-system files
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Legacy source copies: rights/privacy review required
+/E.zip
+/E/

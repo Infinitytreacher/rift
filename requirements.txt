@@ -1,0 +1,22 @@
+# SPDX-FileCopyrightText: 2026 Siddhant Tiwari
+# SPDX-License-Identifier: AGPL-3.0-only
+# Runtime dependencies. These bounds are not a reproducible lockfile.
+# Install the appropriate PyTorch build for your CPU/CUDA platform first if needed.
+fastapi>=0.120,<1
+uvicorn[standard]>=0.35,<1
+python-multipart>=0.0.22,<0.1
+requests>=2.32.4,<3
+pydantic>=2.10,<3
+
+# The implementation uses Transformers, not faster-whisper.
+torch>=2.6,<3
+transformers>=5.10,<6
+
+# Security floors for transitive runtime dependencies found during release review.
+anyio>=4.14.2,<5
+certifi>=2026.10.18
+filelock>=4.2.1,<5
+setuptools>=84.1
+urllib3>=2.8,<3
+
+# SQLite is included with Python. FFmpeg and Ollama are separate system tools.

@@ -1,0 +1,453 @@
+<!DOCTYPE html>
+<!-- SPDX-FileCopyrightText: 2026 Siddhant Tiwari -->
+<!-- SPDX-License-Identifier: AGPL-3.0-only -->
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Student Feedback Survey | IoT Feedback System</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .container {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            max-width: 600px;
+            width: 100%;
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 1.8rem;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            opacity: 0.9;
+            font-size: 0.95rem;
+        }
+
+        .content {
+            padding: 30px;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 40px;
+        }
+
+        .loading-spinner {
+            width: 50px;
+            height: 50px;
+            border: 4px solid #e5e7eb;
+            border-top-color: #7c3aed;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .error-message {
+            background: #fee2e2;
+            border: 1px solid #fecaca;
+            color: #dc2626;
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+        }
+
+        .error-message h3 {
+            margin-bottom: 10px;
+        }
+
+        .retry-btn {
+            margin-top: 15px;
+            padding: 10px 25px;
+            background: #dc2626;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 1rem;
+            transition: background 0.3s;
+        }
+
+        .retry-btn:hover {
+            background: #b91c1c;
+        }
+
+        .topic-card {
+            background: #f9fafb;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 20px;
+            border: 1px solid #e5e7eb;
+        }
+
+        .topic-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+
+        .topic-name {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: #1f2937;
+        }
+
+        .topic-number {
+            background: #7c3aed;
+            color: white;
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.85rem;
+            font-weight: 600;
+        }
+
+        .rating-scale {
+            display: flex;
+            justify-content: space-between;
+            gap: 6px;
+        }
+
+        .rating-btn {
+            flex: 1;
+            padding: 12px 8px;
+            border: 2px solid #e5e7eb;
+            background: white;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 1rem;
+            font-weight: 600;
+            color: #6b7280;
+            transition: all 0.2s;
+        }
+
+        .rating-btn:hover {
+            border-color: #7c3aed;
+            color: #7c3aed;
+            transform: translateY(-2px);
+        }
+
+        .rating-btn.selected {
+            background: #7c3aed;
+            border-color: #7c3aed;
+            color: white;
+            transform: scale(1.05);
+        }
+
+        .rating-labels {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 4px;
+            font-size: 0.75rem;
+            color: #9ca3af;
+        }
+
+        .submit-section {
+            margin-top: 30px;
+            text-align: center;
+        }
+
+        .submit-btn {
+            width: 100%;
+            padding: 15px 30px;
+            background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+            color: white;
+            border: none;
+            border-radius: 12px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .submit-btn:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 30px rgba(124, 58, 237, 0.4);
+        }
+
+        .submit-btn:disabled {
+            background: #d1d5db;
+            cursor: not-allowed;
+        }
+
+        .success-message {
+            text-align: center;
+            padding: 40px;
+        }
+
+        .success-icon {
+            width: 80px;
+            height: 80px;
+            background: #d1fae5;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 20px;
+        }
+
+        .success-icon svg {
+            width: 40px;
+            height: 40px;
+            color: #059669;
+        }
+
+        .success-message h2 {
+            color: #059669;
+            margin-bottom: 10px;
+        }
+
+        .success-message p {
+            color: #6b7280;
+        }
+
+        .anonymous-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            background: rgba(255, 255, 255, 0.2);
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            margin-top: 15px;
+        }
+
+        .anonymous-badge svg {
+            width: 16px;
+            height: 16px;
+        }
+
+        @media (max-width: 480px) {
+            body {
+                padding: 10px;
+            }
+
+            .header {
+                padding: 20px;
+            }
+
+            .header h1 {
+                font-size: 1.5rem;
+            }
+
+            .content {
+                padding: 20px;
+            }
+
+            .rating-btn {
+                padding: 10px 4px;
+                font-size: 0.9rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Understanding Survey</h1>
+            <p>Rate your comprehension of today's lecture topics</p>
+            <div class="anonymous-badge">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                </svg>
+                No name or login required
+            </div>
+        </div>
+
+        <div class="content" id="main-content">
+            <!-- Content will be dynamically loaded -->
+            <div class="loading" id="loading-state">
+                <div class="loading-spinner"></div>
+                <p>Loading topics...</p>
+            </div>
+        </div>
+        <footer style="padding: 16px; background: white; color: #374151; font-size: 0.8rem; text-align: center;">
+            Copyright &copy; 2026 Siddhant Tiwari. No warranty.
+            You can redistribute under <a href="/license">AGPL-3.0-only</a>.
+            <a href="/source">Download source</a>.
+        </footer>
+    </div>
+
+    <script src="/static/app.js"></script>
+    <script>
+        // Initialize student survey
+        document.addEventListener('DOMContentLoaded', () => {
+            initStudentSurvey();
+        });
+
+        async function initStudentSurvey() {
+            const container = document.getElementById('main-content');
+            const loadingState = document.getElementById('loading-state');
+
+            try {
+                // Fetch latest topics
+                const topics = await fetchAPI('/topics/latest');
+
+                if (!topics || topics.length === 0) {
+                    container.innerHTML = `
+                        <div class="error-message">
+                            <h3>No Topics Available</h3>
+                            <p>No lecture has been uploaded yet. Please check back later.</p>
+                        </div>
+                    `;
+                    return;
+                }
+
+                // Store topics for submission
+                window.currentTopics = topics;
+                window.selectedRatings = {};
+
+                // Render survey
+                renderSurvey(topics);
+
+            } catch (error) {
+                loadingState.innerHTML = `
+                    <div class="error-message">
+                        <h3>Unable to Load Topics</h3>
+                        <p>${escapeHtml(error.message)}</p>
+                        <button class="retry-btn" onclick="initStudentSurvey()">Try Again</button>
+                    </div>
+                `;
+            }
+        }
+
+        function renderSurvey(topics) {
+            const container = document.getElementById('main-content');
+
+            const topicsHtml = topics.map((topic, index) => `
+                <div class="topic-card" data-topic-id="${topic.topic_id}">
+                    <div class="topic-header">
+                        <span class="topic-name">${escapeHtml(topic.topic_name)}</span>
+                        <span class="topic-number">${index + 1}</span>
+                    </div>
+                    <div class="rating-scale">
+                        ${[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(rating => `
+                            <button 
+                                class="rating-btn" 
+                                data-topic-id="${topic.topic_id}" 
+                                data-rating="${rating}"
+                                onclick="selectRating(${topic.topic_id}, ${rating})"
+                            >
+                                ${rating}
+                            </button>
+                        `).join('')}
+                    </div>
+                    <div class="rating-labels">
+                        <span>Not understood</span>
+                        <span>Fully understood</span>
+                    </div>
+                </div>
+            `).join('');
+
+            container.innerHTML = `
+                ${topicsHtml}
+                <div class="submit-section">
+                    <button class="submit-btn" id="submit-btn" onclick="submitFeedback()" disabled>
+                        Submit Feedback
+                    </button>
+                </div>
+            `;
+        }
+
+        function selectRating(topicId, rating) {
+            // Update selected rating
+            window.selectedRatings[topicId] = rating;
+
+            // Update UI
+            const topicCard = document.querySelector(`[data-topic-id="${topicId}"].topic-card`);
+            const buttons = topicCard.querySelectorAll('.rating-btn');
+
+            buttons.forEach(btn => {
+                const btnRating = parseInt(btn.dataset.rating);
+                if (btnRating === rating) {
+                    btn.classList.add('selected');
+                } else {
+                    btn.classList.remove('selected');
+                }
+            });
+
+            // Check if all topics have ratings
+            checkSubmitButton();
+        }
+
+        function checkSubmitButton() {
+            const submitBtn = document.getElementById('submit-btn');
+            const totalTopics = window.currentTopics.length;
+            const ratedTopics = Object.keys(window.selectedRatings).length;
+
+            submitBtn.disabled = ratedTopics < totalTopics;
+        }
+
+        async function submitFeedback() {
+            const submitBtn = document.getElementById('submit-btn');
+            submitBtn.disabled = true;
+            submitBtn.textContent = 'Submitting...';
+
+            // Prepare feedback data
+            const feedback = window.currentTopics.map(topic => ({
+                topic_id: topic.topic_id,
+                rating: window.selectedRatings[topic.topic_id]
+            }));
+
+            try {
+                await fetchAPI('/submit-feedback', {
+                    method: 'POST',
+                    body: JSON.stringify({ feedback })
+                });
+
+                // Show success message
+                const container = document.getElementById('main-content');
+                container.innerHTML = `
+                    <div class="success-message">
+                        <div class="success-icon">
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                            </svg>
+                        </div>
+                        <h2>Thank You!</h2>
+                        <p>Your feedback was submitted without a name or login.</p>
+                    </div>
+                `;
+
+            } catch (error) {
+                submitBtn.disabled = false;
+                submitBtn.textContent = 'Submit Feedback';
+                alert('Failed to submit feedback: ' + error.message);
+            }
+        }
+    </script>
+</body>
+</html>

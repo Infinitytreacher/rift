@@ -1,0 +1,339 @@
+<!DOCTYPE html>
+<!-- SPDX-FileCopyrightText: 2026 Siddhant Tiwari -->
+<!-- SPDX-License-Identifier: AGPL-3.0-only -->
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Instructor Dashboard | IoT Feedback System</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        /* [Keep all your existing CSS styles exactly as they were] */
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif; background: #f3f4f6; min-height: 100vh; }
+        .dashboard-header { background: linear-gradient(135deg, #1e3a8a 0%, #3730a3 100%); color: white; padding: 30px; box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15); }
+        .header-content { max-width: 1200px; margin: 0 auto; display: flex; justify-content: space-between; align-items: center; }
+        .header-content h1 { font-size: 1.8rem; margin-bottom: 5px; }
+        .header-content p { opacity: 0.85; font-size: 0.95rem; }
+        .nav-links { display: flex; gap: 15px; }
+        .nav-links a { color: white; text-decoration: none; padding: 10px 20px; background: rgba(255, 255, 255, 0.1); border-radius: 8px; transition: background 0.3s; }
+        .nav-links a:hover { background: rgba(255, 255, 255, 0.2); }
+        .dashboard-content { max-width: 1200px; margin: 0 auto; padding: 30px; }
+        .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; margin-bottom: 30px; }
+        .stat-card { background: white; border-radius: 12px; padding: 25px; box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05); }
+        .stat-card .label { font-size: 0.85rem; color: #6b7280; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px; }
+        .stat-card .value { font-size: 2rem; font-weight: 700; color: #1f2937; }
+        .stat-card .value.positive { color: #059669; }
+        .stat-card .value.warning { color: #d97706; }
+        .stat-card .value.danger { color: #dc2626; }
+        .chart-container { background: white; border-radius: 12px; padding: 30px; box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05); margin-bottom: 30px; }
+        .chart-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+        .chart-header h2 { font-size: 1.25rem; color: #1f2937; }
+        .refresh-btn { padding: 10px 20px; background: #4f46e5; color: white; border: none; border-radius: 8px; cursor: pointer; font-size: 0.9rem; display: flex; align-items: center; gap: 8px; transition: background 0.3s; }
+        .refresh-btn:hover { background: #4338ca; }
+        .refresh-btn svg { width: 18px; height: 18px; }
+        .refresh-btn.loading svg { animation: spin 1s linear infinite; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .chart-wrapper { position: relative; height: 400px; }
+        .legend-note { margin-top: 20px; padding: 15px; background: #f9fafb; border-radius: 8px; display: flex; align-items: center; gap: 15px; }
+        .legend-item { display: flex; align-items: center; gap: 8px; font-size: 0.9rem; color: #6b7280; }
+        .legend-color { width: 16px; height: 16px; border-radius: 4px; }
+        .legend-color.good { background: #10b981; }
+        .legend-color.warning { background: #f59e0b; }
+        .legend-color.danger { background: #ef4444; }
+        .details-table { background: white; border-radius: 12px; box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05); overflow: hidden; }
+        .table-header { padding: 20px 25px; border-bottom: 1px solid #e5e7eb; }
+        .table-header h2 { font-size: 1.25rem; color: #1f2937; }
+        table { width: 100%; border-collapse: collapse; }
+        th, td { padding: 15px 25px; text-align: left; }
+        th { background: #f9fafb; font-weight: 600; color: #374151; font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.5px; }
+        td { border-bottom: 1px solid #e5e7eb; color: #1f2937; }
+        tr:last-child td { border-bottom: none; }
+        tr:hover { background: #f9fafb; }
+        .rating-badge { display: inline-block; padding: 5px 12px; border-radius: 20px; font-weight: 600; font-size: 0.9rem; }
+        .rating-badge.good { background: #d1fae5; color: #059669; }
+        .rating-badge.warning { background: #fef3c7; color: #d97706; }
+        .rating-badge.danger { background: #fee2e2; color: #dc2626; }
+        .loading-state { text-align: center; padding: 60px; }
+        .loading-spinner { width: 50px; height: 50px; border: 4px solid #e5e7eb; border-top-color: #4f46e5; border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto 20px; }
+        .error-state { text-align: center; padding: 60px; background: white; border-radius: 12px; }
+        .error-state h3 { color: #dc2626; margin-bottom: 10px; }
+        .error-state p { color: #6b7280; }
+        .empty-state { text-align: center; padding: 60px; background: white; border-radius: 12px; }
+        .empty-state svg { width: 80px; height: 80px; color: #9ca3af; margin-bottom: 20px; }
+        .empty-state h3 { color: #374151; margin-bottom: 10px; }
+        .empty-state p { color: #6b7280; }
+        .status-indicator { display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; border-radius: 20px; font-size: 0.85rem; background: rgba(255, 255, 255, 0.1); }
+        .status-dot { width: 8px; height: 8px; border-radius: 50%; background: #10b981; }
+        @media (max-width: 768px) { .header-content { flex-direction: column; gap: 20px; text-align: center; } .nav-links { flex-wrap: wrap; justify-content: center; } .chart-wrapper { height: 300px; } .stats-grid { grid-template-columns: 1fr 1fr; } th, td { padding: 12px 15px; font-size: 0.9rem; } }
+    </style>
+</head>
+<body>
+    <header class="dashboard-header">
+        <div class="header-content">
+            <div>
+                <h1>Instructor Dashboard</h1>
+                <p>Real-time understanding analytics</p>
+            </div>
+            <div class="nav-links">
+                <a href="/student">Student Survey</a>
+                <div class="status-indicator">
+                    <span class="status-dot"></span>
+                    Live
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <main class="dashboard-content" id="dashboard-content">
+        </main>
+
+    <footer style="padding: 16px; background: white; color: #374151; font-size: 0.8rem; text-align: center;">
+        Copyright &copy; 2026 Siddhant Tiwari. No warranty.
+        You can redistribute under <a href="/license">AGPL-3.0-only</a>.
+        <a href="/source">Download source</a>.
+    </footer>
+    <script src="/static/app.js"></script>
+    <script>
+        let chartInstance = null;
+
+        document.addEventListener('DOMContentLoaded', () => {
+            loadDashboard();
+            setInterval(refreshDashboard, 30000);
+        });
+
+        async function loadDashboard() {
+            const container = document.getElementById('dashboard-content');
+            container.innerHTML = `<div class="loading-state"><div class="loading-spinner"></div><p>Loading analytics...</p></div>`;
+            try {
+                const stats = await fetchAPI('/dashboard-stats');
+                renderDashboard(stats);
+            } catch (error) {
+                container.innerHTML = `
+                    <div class="error-state">
+                        <h3>Unable to Load Data</h3>
+                        <p>${escapeHtml(error.message)}</p>
+                        <button class="refresh-btn" onclick="loadDashboard()" style="margin-top: 20px;">Retry</button>
+                    </div>
+                `;
+            }
+        }
+
+        async function refreshDashboard() {
+            const refreshBtn = document.querySelector('.refresh-btn');
+            if (refreshBtn) refreshBtn.classList.add('loading');
+            try {
+                const stats = await fetchAPI('/dashboard-stats');
+                renderDashboard(stats);
+            } catch (error) {
+                console.error('Refresh failed:', error);
+            }
+            if (refreshBtn) refreshBtn.classList.remove('loading');
+        }
+
+        function renderDashboard(stats) {
+            const container = document.getElementById('dashboard-content');
+
+            if (!stats || stats.length === 0) {
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                        </svg>
+                        <h3>No Data Available</h3>
+                        <p>Upload a lecture and collect student feedback to see analytics.</p>
+                    </div>
+                `;
+                return;
+            }
+
+            // Fix 1: Calculate total students based on the max response count for a single topic
+            const totalStudents = stats.length > 0 ? Math.max(...stats.map(s => s.response_count)) : 0;
+            const topicsWithRatings = stats.filter(s => s.avg_rating !== null);
+            const overallAvg = topicsWithRatings.length > 0
+                ? topicsWithRatings.reduce((sum, s) => sum + s.avg_rating, 0) / topicsWithRatings.length
+                : null;
+            const lowScoringTopics = stats.filter(s => s.avg_rating !== null && s.avg_rating < 6).length;
+
+            container.innerHTML = `
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="label">Students Responded</div>
+                        <div class="value">${totalStudents}</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="label">Average Rating</div>
+                        <div class="value ${getRatingClass(overallAvg)}">${overallAvg ? overallAvg.toFixed(1) : 'N/A'}</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="label">Topics Covered</div>
+                        <div class="value">${stats.length}</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="label">Needs Review</div>
+                        <div class="value ${lowScoringTopics > 0 ? 'danger' : 'positive'}">${lowScoringTopics}</div>
+                    </div>
+                </div>
+
+                <div class="chart-container">
+                    <div class="chart-header">
+                        <h2>Understanding by Topic <span style="font-size: 0.9rem; color: #6b7280; font-weight: normal; margin-left: 10px;">(Click bars for deep analysis)</span></h2>
+                        <button class="refresh-btn" onclick="refreshDashboard()">Refresh</button>
+                    </div>
+                    <div class="chart-wrapper">
+                        <canvas id="topicChart"></canvas>
+                    </div>
+                    <div class="legend-note">
+                        <div class="legend-item"><div class="legend-color good"></div><span>Good (7-10)</span></div>
+                        <div class="legend-item"><div class="legend-color warning"></div><span>Needs Attention (5-6)</span></div>
+                        <div class="legend-item"><div class="legend-color danger"></div><span>Requires Review (&lt;5)</span></div>
+                    </div>
+                </div>
+
+                <div class="details-table">
+                    <div class="table-header"><h2>Topic Details</h2></div>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Topic</th>
+                                <th>Avg Rating</th>
+                                <th>Responses</th>
+                                <th>Variance</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${stats.map(s => `
+                                <tr>
+                                    <td>${escapeHtml(s.topic_name)}</td>
+                                    <td>${s.avg_rating ? s.avg_rating.toFixed(1) : 'N/A'}</td>
+                                    <td>${s.response_count}</td>
+                                    <td>${s.variance.toFixed(2)}</td>
+                                    <td>
+                                        ${s.avg_rating 
+                                            ? `<span class="rating-badge ${getRatingClass(s.avg_rating)}">${getStatusText(s.avg_rating)}</span>`
+                                            : '<span style="color: #9ca3af;">No data</span>'
+                                        }
+                                    </td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                </div>
+            `;
+
+            renderChart(stats);
+        }
+
+        function renderChart(stats) {
+            const ctx = document.getElementById('topicChart').getContext('2d');
+            if (chartInstance) chartInstance.destroy();
+
+            const labels = stats.map(s => s.topic_name);
+            const data = stats.map(s => s.avg_rating || 0);
+            const colors = stats.map(s => getBarColor(s.avg_rating));
+            
+            // Needed to map clicks back to topic IDs
+            const topicIds = stats.map(s => s.topic_id);
+
+            chartInstance = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Average Rating',
+                        data: data,
+                        backgroundColor: colors,
+                        borderColor: colors.map(c => c.replace('0.8', '1')),
+                        borderWidth: 1,
+                        borderRadius: 6,
+                        barThickness: 50
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    // Fix 3: Open details page on bar click
+                    onClick: (event, elements) => {
+                        if (elements.length > 0) {
+                            const dataIndex = elements[0].index;
+                            const clickedTopicId = topicIds[dataIndex];
+                            // Open granular analysis page in a new tab
+                            window.open(`/static/topic-details.html?id=${clickedTopicId}`, '_blank');
+                        }
+                    },
+                    // Cursor pointer on hover over bars to indicate clickability
+                    onHover: (event, chartElement) => {
+                        event.native.target.style.cursor = chartElement[0] ? 'pointer' : 'default';
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            max: 10,
+                            ticks: { stepSize: 1, font: { size: 12 } },
+                            grid: { color: '#e5e7eb' },
+                            title: { display: true, text: 'Rating (1-10)', font: { size: 14, weight: '600' } }
+                        },
+                        x: {
+                            ticks: {
+                                font: { size: 12 },
+                                // Fix 2: Auto-truncate long text and rotate to prevent squeezing
+                                maxRotation: 45,
+                                minRotation: 45,
+                                callback: function(value, index, values) {
+                                    const fullLabel = labels[index];
+                                    if (fullLabel.length > 20) {
+                                        return fullLabel.substr(0, 20) + '...';
+                                    }
+                                    return fullLabel;
+                                }
+                            },
+                            grid: { display: false }
+                        }
+                    },
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            backgroundColor: 'rgba(17, 24, 39, 0.9)',
+                            titleFont: { size: 14, weight: '600' },
+                            bodyFont: { size: 13 },
+                            padding: 12,
+                            cornerRadius: 8,
+                            callbacks: {
+                                // Restore full title in tooltip if it was truncated
+                                title: function(context) {
+                                    return labels[context[0].dataIndex];
+                                },
+                                label: function(context) {
+                                    return `Rating: ${context.raw.toFixed(1)}/10 (Click to view Gaussian distribution)`;
+                                }
+                            }
+                        }
+                    },
+                    animation: { duration: 800, easing: 'easeOutQuart' }
+                }
+            });
+        }
+
+        function getRatingClass(rating) {
+            if (rating === null || rating === undefined) return '';
+            if (rating >= 7) return 'good';
+            if (rating >= 5) return 'warning';
+            return 'danger';
+        }
+
+        function getBarColor(rating) {
+            if (rating === null || rating === undefined) return 'rgba(156, 163, 175, 0.8)';
+            if (rating >= 7) return 'rgba(16, 185, 129, 0.8)';
+            if (rating >= 5) return 'rgba(245, 158, 11, 0.8)';
+            return 'rgba(239, 68, 68, 0.8)';
+        }
+
+        function getStatusText(rating) {
+            if (rating >= 7) return 'Good';
+            if (rating >= 5) return 'Needs Attention';
+            return 'Requires Review';
+        }
+    </script>
+</body>
+</html>

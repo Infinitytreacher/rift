@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<!-- SPDX-FileCopyrightText: 2026 Siddhant Tiwari -->
+<!-- SPDX-License-Identifier: AGPL-3.0-only -->
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Topic Granular Analysis | IoT Feedback System</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif; background: #f3f4f6; min-height: 100vh; padding: 40px 20px; }
+        .container { max-width: 1000px; margin: 0 auto; }
+        .header { background: white; border-radius: 12px; padding: 30px; box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05); margin-bottom: 20px; text-align: center; }
+        .header h1 { color: #1f2937; margin-bottom: 10px; }
+        .header p { color: #6b7280; font-size: 1.1rem; }
+        .grid-layout { display: grid; grid-template-columns: 2fr 1fr; gap: 20px; }
+        
+        .chart-card { background: white; border-radius: 12px; padding: 30px; box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05); }
+        .chart-wrapper { position: relative; height: 400px; }
+        
+        .stats-card { display: flex; flex-direction: column; gap: 20px; }
+        .stat-box { background: white; border-radius: 12px; padding: 25px; box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05); text-align: center; }
+        .stat-box h3 { font-size: 0.9rem; color: #6b7280; text-transform: uppercase; margin-bottom: 10px; }
+        .stat-box .value { font-size: 2.5rem; font-weight: 700; color: #1f2937; margin-bottom: 5px; }
+        .stat-box .desc { font-size: 0.9rem; color: #9ca3af; }
+        
+        .percentage-good { color: #10b981 !important; }
+        .percentage-warn { color: #f59e0b !important; }
+        .percentage-danger { color: #ef4444 !important; }
+        
+        @media (max-width: 768px) { .grid-layout { grid-template-columns: 1fr; } }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1 id="topic-title">Loading Topic Analysis...</h1>
+            <p>Gaussian Distribution of Student Understanding</p>
+        </div>
+
+        <div class="grid-layout" id="content-grid" style="display: none;">
+            <div class="chart-card">
+                <div class="chart-wrapper">
+                    <canvas id="gaussianChart"></canvas>
+                </div>
+            </div>
+            
+            <div class="stats-card">
+                <div class="stat-box">
+                    <h3>High Understanding (7-10)</h3>
+                    <div class="value percentage-good" id="stat-high">0%</div>
+                    <div class="desc">Estimated students who grasp the topic</div>
+                </div>
+                <div class="stat-box">
+                    <h3>Partial Understanding (5-6)</h3>
+                    <div class="value percentage-warn" id="stat-mid">0%</div>
+                    <div class="desc">Estimated students needing review</div>
+                </div>
+                <div class="stat-box">
+                    <h3>Lost / Struggling (1-4)</h3>
+                    <div class="value percentage-danger" id="stat-low">0%</div>
+                    <div class="desc">Estimated students left behind</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <footer style="padding: 16px; background: white; color: #374151; font-size: 0.8rem; text-align: center;">
+        Copyright &copy; 2026 Siddhant Tiwari. No warranty.
+        You can redistribute under <a href="/license">AGPL-3.0-only</a>.
+        <a href="/source">Download source</a>.
+    </footer>
+    <script src="/static/app.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', async () => {
+            const urlParams = new URLSearchParams(window.location.search);
+            const rawIdParam = urlParams.get('id');
+
+            // 1. Check if ID exists in URL
+            if (!rawIdParam || rawIdParam === 'undefined') {
+                document.getElementById('topic-title').innerText = "Error: Invalid or missing Topic ID in URL.";
+                return;
+            }
+
+            try {
+                // 2. Fetch the live database stats
+                const allStats = await fetchAPI('/dashboard-stats');
+                
+                // 3. Bulletproof matching: Convert both to strings before comparing
+                const topicStats = allStats.find(t => String(t.topic_id) === String(rawIdParam));
+
+                if (!topicStats) {
+                    // Show exact debugging info on the screen if it fails
+                    const availableIds = allStats.map(t => t.topic_id).join(", ");
+                    document.getElementById('topic-title').innerHTML = `
+                        <span style="color: red;">Topic ${escapeHtml(rawIdParam)} not found.</span><br>
+                        <span style="font-size: 0.9rem; color: #6b7280;">Available Live IDs in this session: [${availableIds}]</span>
+                    `;
+                    return;
+                }
+                
+                if (topicStats.avg_rating === null) {
+                    document.getElementById('topic-title').innerText = `Analysis: ${topicStats.topic_name} (No ratings yet)`;
+                    return;
+                }
+
+                // 4. Success! Render the data
+                document.getElementById('topic-title').innerText = `Analysis: ${topicStats.topic_name}`;
+                document.getElementById('content-grid').style.display = "grid";
+
+                renderGaussianCurve(topicStats.avg_rating, topicStats.variance);
+
+            } catch (error) {
+                document.getElementById('topic-title').innerText = "Failed to connect to the database.";
+                console.error(error);
+            }
+        });
+
+        // Error Function (erf) approximation for Cumulative Distribution Function
+        function erf(x) {
+            const sign = (x >= 0) ? 1 : -1;
+            x = Math.abs(x);
+            const a1 =  0.254829592, a2 = -0.284496736, a3 =  1.421413741;
+            const a4 = -1.453152027, a5 =  1.061405429, p  =  0.3275911;
+            const t = 1.0 / (1.0 + p * x);
+            const y = 1.0 - (((((a5 * t + a4) * t) + a3) * t + a2) * t + a1) * t * Math.exp(-x * x);
+            return sign * y;
+        }
+
+        // Cumulative Distribution Function for Normal Distribution
+        function normalCDF(x, mean, stdDev) {
+            if (stdDev === 0) return (x >= mean) ? 1 : 0;
+            return 0.5 * (1 + erf((x - mean) / (stdDev * Math.sqrt(2))));
+        }
+
+        function renderGaussianCurve(mean, variance) {
+            // FIX: If variance is 0 (all students voted exactly the same), fallback to 0.2 to draw a sharp spike.
+            // This completely prevents the Division By Zero bug.
+            const safeVariance = (variance && variance > 0) ? variance : 0.2; 
+            const stdDev = Math.sqrt(safeVariance);
+            
+            // Calculate Probabilities
+            const probLow = normalCDF(4.5, mean, stdDev);
+            const probMid = normalCDF(6.5, mean, stdDev) - normalCDF(4.5, mean, stdDev);
+            const probHigh = 1 - normalCDF(6.5, mean, stdDev);
+
+            document.getElementById('stat-low').innerText = `${Math.round(probLow * 100)}%`;
+            document.getElementById('stat-mid').innerText = `${Math.round(probMid * 100)}%`;
+            document.getElementById('stat-high').innerText = `${Math.round(probHigh * 100)}%`;
+
+            // Generate points for the curve (X axis from 1 to 10)
+            const dataPoints = [];
+            const labels = [];
+            
+            // Step set to 0.1 for a beautifully smooth curve
+            for (let i = 1; i <= 10; i += 0.1) {
+                const x = parseFloat(i.toFixed(1));
+                labels.push(x);
+                
+                // Gaussian PDF Formula (Using safeVariance)
+                const exponent = -Math.pow(x - mean, 2) / (2 * safeVariance);
+                const y = (1 / (stdDev * Math.sqrt(2 * Math.PI))) * Math.exp(exponent);
+                dataPoints.push(y);
+            }
+
+            const ctx = document.getElementById('gaussianChart').getContext('2d');
+            new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Distribution of Understanding',
+                        data: dataPoints,
+                        borderColor: '#4f46e5',
+                        backgroundColor: 'rgba(79, 70, 229, 0.2)',
+                        borderWidth: 3,
+                        pointRadius: 0,
+                        fill: true,
+                        tension: 0.4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        x: { 
+                            title: { display: true, text: 'Student Rating (1-10)', font: { size: 14, weight: 'bold' } },
+                            ticks: { maxTicksLimit: 10 }
+                        },
+                        y: { 
+                            display: false, 
+                            beginAtZero: true 
+                        }
+                    },
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            callbacks: {
+                                label: () => 'Relative probability density',
+                                title: (context) => `Rating Score: ${context[0].label}`
+                            }
+                        }
+                    }
+                }
+            });
+        }
+    </script>
+</body>
+</html>

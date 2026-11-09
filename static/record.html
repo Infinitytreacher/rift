@@ -1,0 +1,1159 @@
+<!DOCTYPE html>
+<!-- SPDX-FileCopyrightText: 2026 Siddhant Tiwari -->
+<!-- SPDX-License-Identifier: AGPL-3.0-only -->
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Lecture Recorder | IoT Feedback System</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 50%, #0f172a 100%);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            color: white;
+            overflow-x: hidden;
+        }
+
+        /* ---- Header ---- */
+        .page-header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .page-header h1 {
+            font-size: 1.8rem;
+            font-weight: 700;
+            margin-bottom: 6px;
+            letter-spacing: -0.5px;
+        }
+        .page-header p {
+            color: rgba(255,255,255,0.55);
+            font-size: 0.95rem;
+        }
+
+        /* ---- Main Card ---- */
+        .recorder-card {
+            background: rgba(255,255,255,0.06);
+            backdrop-filter: blur(24px);
+            -webkit-backdrop-filter: blur(24px);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 24px;
+            padding: 36px 32px 32px;
+            max-width: 480px;
+            width: 100%;
+            box-shadow: 0 25px 80px rgba(0,0,0,0.4);
+        }
+
+        /* ---- Server URL Config ---- */
+        .server-config {
+            margin-bottom: 28px;
+        }
+        .server-config label {
+            display: block;
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: rgba(255,255,255,0.4);
+            margin-bottom: 8px;
+        }
+        .server-config input {
+            width: 100%;
+            padding: 12px 16px;
+            background: rgba(255,255,255,0.08);
+            border: 1px solid rgba(255,255,255,0.12);
+            border-radius: 12px;
+            color: white;
+            font-size: 0.9rem;
+            outline: none;
+            transition: border-color 0.3s;
+        }
+        .server-config input:focus {
+            border-color: rgba(124, 58, 237, 0.7);
+        }
+        .server-config input::placeholder {
+            color: rgba(255,255,255,0.25);
+        }
+
+        /* ---- Course Name ---- */
+        .course-input {
+            margin-bottom: 28px;
+        }
+        .course-input label {
+            display: block;
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: rgba(255,255,255,0.4);
+            margin-bottom: 8px;
+        }
+        .course-input input {
+            width: 100%;
+            padding: 12px 16px;
+            background: rgba(255,255,255,0.08);
+            border: 1px solid rgba(255,255,255,0.12);
+            border-radius: 12px;
+            color: white;
+            font-size: 0.9rem;
+            outline: none;
+            transition: border-color 0.3s;
+        }
+        .course-input input:focus {
+            border-color: rgba(124, 58, 237, 0.7);
+        }
+        .course-input input::placeholder {
+            color: rgba(255,255,255,0.25);
+        }
+
+        /* ---- Visualizer ---- */
+        .visualizer-wrapper {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 140px;
+            margin-bottom: 24px;
+            position: relative;
+        }
+        #audioVisualizer {
+            width: 100%;
+            height: 100%;
+            border-radius: 16px;
+        }
+
+        /* ---- Status Indicator ---- */
+        .status-area {
+            text-align: center;
+            margin-bottom: 28px;
+        }
+        .status-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 18px;
+            border-radius: 50px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            transition: all 0.3s;
+        }
+        .status-badge.idle {
+            background: rgba(255,255,255,0.08);
+            color: rgba(255,255,255,0.5);
+        }
+        .status-badge.recording {
+            background: rgba(239, 68, 68, 0.15);
+            color: #f87171;
+        }
+        .status-badge.paused {
+            background: rgba(245, 158, 11, 0.15);
+            color: #fbbf24;
+        }
+        .status-badge.uploading {
+            background: rgba(79, 70, 229, 0.15);
+            color: #a5b4fc;
+        }
+        .status-badge.success {
+            background: rgba(16, 185, 129, 0.15);
+            color: #34d399;
+        }
+        .status-badge.error {
+            background: rgba(239, 68, 68, 0.15);
+            color: #f87171;
+        }
+        .status-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: currentColor;
+        }
+        .status-dot.pulse {
+            animation: pulse 1.2s ease-in-out infinite;
+        }
+        @keyframes pulse {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.4; transform: scale(0.75); }
+        }
+
+        /* ---- Timer ---- */
+        .timer {
+            font-size: 3.2rem;
+            font-weight: 200;
+            text-align: center;
+            font-variant-numeric: tabular-nums;
+            letter-spacing: 2px;
+            margin-bottom: 28px;
+            color: rgba(255,255,255,0.9);
+            transition: color 0.3s;
+        }
+        .timer.recording { color: #f87171; }
+        .timer.paused { color: #fbbf24; }
+
+        /* ---- Control Buttons ---- */
+        .controls {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 24px;
+            margin-bottom: 20px;
+        }
+
+        .ctrl-btn {
+            width: 64px;
+            height: 64px;
+            border-radius: 50%;
+            border: 2px solid rgba(255,255,255,0.15);
+            background: rgba(255,255,255,0.06);
+            color: white;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.25s;
+            position: relative;
+        }
+        .ctrl-btn:disabled {
+            opacity: 0.25;
+            cursor: not-allowed;
+        }
+        .ctrl-btn:not(:disabled):hover {
+            background: rgba(255,255,255,0.12);
+            transform: scale(1.08);
+        }
+        .ctrl-btn:not(:disabled):active {
+            transform: scale(0.95);
+        }
+        .ctrl-btn svg {
+            width: 26px;
+            height: 26px;
+        }
+
+        /* Primary record button */
+        .ctrl-btn.record-btn {
+            width: 80px;
+            height: 80px;
+            border-color: rgba(239, 68, 68, 0.4);
+            background: rgba(239, 68, 68, 0.1);
+        }
+        .ctrl-btn.record-btn:not(:disabled):hover {
+            background: rgba(239, 68, 68, 0.25);
+            border-color: rgba(239, 68, 68, 0.6);
+        }
+        .ctrl-btn.record-btn svg {
+            width: 32px;
+            height: 32px;
+        }
+        .ctrl-btn.record-btn.is-recording {
+            border-color: rgba(239, 68, 68, 0.8);
+            background: rgba(239, 68, 68, 0.2);
+            animation: recordPulse 2s ease-in-out infinite;
+        }
+        @keyframes recordPulse {
+            0%, 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.3); }
+            50% { box-shadow: 0 0 0 16px rgba(239, 68, 68, 0); }
+        }
+
+        /* Stop & Send (wider pill) */
+        .send-btn {
+            width: 100%;
+            padding: 16px 24px;
+            border-radius: 14px;
+            border: none;
+            font-size: 1.05rem;
+            font-weight: 600;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            transition: all 0.3s;
+        }
+        .send-btn:disabled {
+            opacity: 0.25;
+            cursor: not-allowed;
+        }
+        .send-btn.stop-send {
+            background: linear-gradient(135deg, #dc2626, #b91c1c);
+            color: white;
+        }
+        .send-btn.stop-send:not(:disabled):hover {
+            background: linear-gradient(135deg, #ef4444, #dc2626);
+            transform: translateY(-2px);
+            box-shadow: 0 8px 30px rgba(220, 38, 38, 0.35);
+        }
+        .send-btn.uploading-active {
+            background: linear-gradient(135deg, #4f46e5, #4338ca);
+            color: white;
+            pointer-events: none;
+        }
+        .send-btn svg { width: 20px; height: 20px; }
+
+        /* ---- Upload Progress ---- */
+        .progress-area {
+            margin-top: 16px;
+            display: none;
+        }
+        .progress-area.visible { display: block; }
+        .progress-bar-track {
+            width: 100%;
+            height: 6px;
+            background: rgba(255,255,255,0.1);
+            border-radius: 3px;
+            overflow: hidden;
+        }
+        .progress-bar-fill {
+            height: 100%;
+            width: 0%;
+            background: linear-gradient(90deg, #7c3aed, #6366f1);
+            border-radius: 3px;
+            transition: width 0.3s;
+        }
+        .progress-label {
+            text-align: center;
+            margin-top: 10px;
+            font-size: 0.85rem;
+            color: rgba(255,255,255,0.5);
+        }
+
+        /* ---- Result Panel ---- */
+        .result-panel {
+            margin-top: 20px;
+            padding: 20px;
+            border-radius: 16px;
+            display: none;
+        }
+        .result-panel.visible { display: block; }
+        .result-panel.success {
+            background: rgba(16, 185, 129, 0.1);
+            border: 1px solid rgba(16, 185, 129, 0.2);
+        }
+        .result-panel.error {
+            background: rgba(239, 68, 68, 0.1);
+            border: 1px solid rgba(239, 68, 68, 0.2);
+        }
+        .result-panel h3 {
+            font-size: 1rem;
+            margin-bottom: 8px;
+        }
+        .result-panel.success h3 { color: #34d399; }
+        .result-panel.error h3 { color: #f87171; }
+        .result-panel p {
+            font-size: 0.88rem;
+            color: rgba(255,255,255,0.6);
+            line-height: 1.5;
+        }
+        .result-panel .topics-list {
+            margin-top: 12px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+        .result-panel .topic-tag {
+            padding: 5px 12px;
+            background: rgba(124, 58, 237, 0.2);
+            border: 1px solid rgba(124, 58, 237, 0.3);
+            border-radius: 8px;
+            font-size: 0.82rem;
+            color: #c4b5fd;
+        }
+        .result-panel .nav-links {
+            margin-top: 16px;
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+        .result-panel .nav-link {
+            padding: 10px 18px;
+            border-radius: 10px;
+            background: rgba(255,255,255,0.08);
+            border: 1px solid rgba(255,255,255,0.12);
+            color: white;
+            text-decoration: none;
+            font-size: 0.85rem;
+            font-weight: 500;
+            transition: all 0.2s;
+        }
+        .result-panel .nav-link:hover {
+            background: rgba(255,255,255,0.15);
+        }
+
+        /* ---- Help Text ---- */
+        .help-text {
+            text-align: center;
+            margin-top: 20px;
+            font-size: 0.78rem;
+            color: rgba(255,255,255,0.3);
+            line-height: 1.6;
+        }
+
+        /* ---- Toast (inline override for dark theme) ---- */
+        .toast-notification {
+            background: rgba(30, 30, 50, 0.95) !important;
+            backdrop-filter: blur(12px);
+            color: white !important;
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+
+        /* ---- Responsive ---- */
+        @media (max-width: 520px) {
+            body { padding: 12px; }
+            .recorder-card { padding: 24px 20px 24px; border-radius: 20px; }
+            .page-header h1 { font-size: 1.4rem; }
+            .timer { font-size: 2.6rem; }
+            .controls { gap: 16px; }
+            .ctrl-btn { width: 56px; height: 56px; }
+            .ctrl-btn svg { width: 22px; height: 22px; }
+            .ctrl-btn.record-btn { width: 72px; height: 72px; }
+            .ctrl-btn.record-btn svg { width: 28px; height: 28px; }
+            .visualizer-wrapper { height: 100px; }
+        }
+
+        /* ---- Permissions overlay ---- */
+        .permission-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.7);
+            backdrop-filter: blur(8px);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+        }
+        .permission-overlay.visible { display: flex; }
+        .permission-box {
+            background: rgba(30, 27, 75, 0.95);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 20px;
+            padding: 36px;
+            max-width: 420px;
+            text-align: center;
+        }
+        .permission-box .mic-icon {
+            width: 64px; height: 64px;
+            background: rgba(124,58,237,0.15);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 20px;
+        }
+        .permission-box .mic-icon svg { width: 30px; height: 30px; color: #a78bfa; }
+        .permission-box h3 { font-size: 1.15rem; margin-bottom: 10px; }
+        .permission-box p { font-size: 0.88rem; color: rgba(255,255,255,0.55); line-height: 1.6; margin-bottom: 20px; }
+        .permission-box button {
+            padding: 12px 28px;
+            background: #7c3aed;
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 0.95rem;
+            font-weight: 600;
+            cursor: pointer;
+        }
+        .permission-box button:hover { background: #6d28d9; }
+    </style>
+</head>
+<body>
+
+    <!-- Header -->
+    <div class="page-header">
+        <h1>Lecture Recorder</h1>
+        <p>Record, stop & send audio directly to the server</p>
+    </div>
+
+    <!-- Main Card -->
+    <div class="recorder-card">
+
+        <!-- Server URL -->
+        <div class="server-config">
+            <label>Server Endpoint</label>
+            <input type="url" id="serverUrl" placeholder="http://localhost:8000" spellcheck="false" autocomplete="off">
+        </div>
+
+        <!-- Course Name (optional) -->
+        <div class="course-input">
+            <label>Course Name (optional)</label>
+            <input type="text" id="courseName" placeholder="e.g. Computer Networks">
+        </div>
+
+        <!-- Visualizer Canvas -->
+        <div class="visualizer-wrapper">
+            <canvas id="audioVisualizer"></canvas>
+        </div>
+
+        <!-- Status Badge -->
+        <div class="status-area">
+            <div class="status-badge idle" id="statusBadge">
+                <span class="status-dot" id="statusDot"></span>
+                <span id="statusText">Ready to Record</span>
+            </div>
+        </div>
+
+        <!-- Timer -->
+        <div class="timer" id="timerDisplay">00:00</div>
+
+        <!-- Control Buttons -->
+        <div class="controls">
+            <!-- Pause / Resume -->
+            <button class="ctrl-btn" id="pauseBtn" disabled title="Pause">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <rect x="6" y="4" width="4" height="16" rx="1"/>
+                    <rect x="14" y="4" width="4" height="16" rx="1"/>
+                </svg>
+            </button>
+
+            <!-- Record (main) -->
+            <button class="ctrl-btn record-btn" id="recordBtn" title="Record">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
+                    <circle cx="12" cy="12" r="8"/>
+                </svg>
+            </button>
+
+            <!-- Discard -->
+            <button class="ctrl-btn" id="discardBtn" disabled title="Discard">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
+                </svg>
+            </button>
+        </div>
+
+        <!-- Stop & Send -->
+        <button class="send-btn stop-send" id="sendBtn" disabled>
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"/>
+            </svg>
+            Stop & Send to Server
+        </button>
+
+        <!-- Progress -->
+        <div class="progress-area" id="progressArea">
+            <div class="progress-bar-track">
+                <div class="progress-bar-fill" id="progressFill"></div>
+            </div>
+            <div class="progress-label" id="progressLabel">Preparing upload...</div>
+        </div>
+
+        <!-- Result Panel -->
+        <div class="result-panel" id="resultPanel">
+            <h3 id="resultTitle"></h3>
+            <p id="resultBody"></p>
+            <div class="topics-list" id="topicsList"></div>
+            <div class="nav-links" id="navLinks"></div>
+        </div>
+
+        <!-- Help -->
+        <div class="help-text">
+            Press <b>Record</b> to start. <b>Pause</b> to take a break. <b>Stop & Send</b> to upload the lecture audio for transcription and topic extraction.
+        </div>
+    </div>
+
+    <!-- Permission Overlay -->
+    <div class="permission-overlay" id="permOverlay">
+        <div class="permission-box">
+            <div class="mic-icon">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 18.75a6 6 0 006-6v-1.5m-6 7.5a6 6 0 01-6-6v-1.5m6 7.5v3.75m-3.75 0h7.5M12 15.75a3 3 0 01-3-3V4.5a3 3 0 116 0v8.25a3 3 0 01-3 3z"/>
+                </svg>
+            </div>
+            <h3>Microphone Access Required</h3>
+            <p>This page needs your microphone to record lectures. Click the button below — your browser will show its own permission popup.</p>
+            <button onclick="requestMicPermission()">Allow Microphone</button>
+            <p class="perm-error-msg" style="display:none; margin-top:16px; padding:12px; background:rgba(239,68,68,0.15); border:1px solid rgba(239,68,68,0.3); border-radius:10px; color:#f87171; font-size:0.82rem; line-height:1.5; text-align:left;"></p>
+        </div>
+    </div>
+
+    <footer style="padding: 16px; background: white; color: #374151; font-size: 0.8rem; text-align: center;">
+        Copyright &copy; 2026 Siddhant Tiwari. No warranty.
+        You can redistribute under <a href="/license">AGPL-3.0-only</a>.
+        <a href="/source">Download source</a>.
+    </footer>
+    <script src="/static/app.js"></script>
+    <script>
+    (() => {
+        // ==================== State ====================
+        let mediaRecorder = null;
+        let audioChunks = [];
+        let audioStream = null;
+        let analyser = null;
+        let animFrameId = null;
+
+        // Timer
+        let timerSeconds = 0;
+        let timerInterval = null;
+
+        // States: 'idle' | 'recording' | 'paused' | 'uploading' | 'done'
+        let state = 'idle';
+
+        // ==================== DOM References ====================
+        const recordBtn    = document.getElementById('recordBtn');
+        const pauseBtn     = document.getElementById('pauseBtn');
+        const discardBtn   = document.getElementById('discardBtn');
+        const sendBtn      = document.getElementById('sendBtn');
+        const timerDisplay = document.getElementById('timerDisplay');
+        const statusBadge  = document.getElementById('statusBadge');
+        const statusDot    = document.getElementById('statusDot');
+        const statusText   = document.getElementById('statusText');
+        const serverUrlIn  = document.getElementById('serverUrl');
+        const courseNameIn = document.getElementById('courseName');
+        const progressArea = document.getElementById('progressArea');
+        const progressFill = document.getElementById('progressFill');
+        const progressLabel= document.getElementById('progressLabel');
+        const resultPanel  = document.getElementById('resultPanel');
+        const resultTitle  = document.getElementById('resultTitle');
+        const resultBody   = document.getElementById('resultBody');
+        const topicsList   = document.getElementById('topicsList');
+        const navLinks     = document.getElementById('navLinks');
+        const permOverlay  = document.getElementById('permOverlay');
+        const canvas       = document.getElementById('audioVisualizer');
+        const canvasCtx    = canvas.getContext('2d');
+
+        // ==================== Init ====================
+        function init() {
+            // Use the server that serves this page, including on localhost.
+            serverUrlIn.value = window.location.origin;
+
+            resizeCanvas();
+            window.addEventListener('resize', resizeCanvas);
+            drawIdleVisualizer();
+
+            recordBtn.addEventListener('click', toggleRecording);
+            pauseBtn.addEventListener('click', togglePause);
+            discardBtn.addEventListener('click', discardRecording);
+            sendBtn.addEventListener('click', stopAndSend);
+        }
+
+        function resizeCanvas() {
+            const wrapper = canvas.parentElement;
+            canvas.width = wrapper.clientWidth * (window.devicePixelRatio || 1);
+            canvas.height = wrapper.clientHeight * (window.devicePixelRatio || 1);
+            canvas.style.width = wrapper.clientWidth + 'px';
+            canvas.style.height = wrapper.clientHeight + 'px';
+            canvasCtx.scale(window.devicePixelRatio || 1, window.devicePixelRatio || 1);
+        }
+
+        // ==================== Recording Control ====================
+        async function toggleRecording() {
+            if (state === 'idle' || state === 'done') {
+                await startRecording();
+            } else if (state === 'recording') {
+                await stopAndSend();
+            }
+        }
+
+        async function startRecording() {
+            // Check if browser supports getUserMedia at all
+            if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+                showMicError('Your browser does not support audio recording. Try Chrome, Firefox, or Edge. If you are using HTTP (not HTTPS), browsers block microphone access on non-secure contexts.');
+                return;
+            }
+
+            // Check for secure context (HTTPS or localhost)
+            if (!window.isSecureContext) {
+                showMicError('Microphone access requires HTTPS. Your page is loaded over HTTP. Access it via https://... or use localhost/127.0.0.1 instead of an IP address.');
+                return;
+            }
+
+            // Request mic directly — this is a real user gesture (Record button click),
+            // so the browser WILL show its native permission popup.
+            try {
+                audioStream = await navigator.mediaDevices.getUserMedia({
+                    audio: {
+                        echoCancellation: true,
+                        noiseSuppression: true,
+                        sampleRate: 44100
+                    }
+                });
+            } catch (err) {
+                // Map common errors to helpful messages
+                let hint = '';
+                if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
+                    hint = 'Microphone permission was denied. Click the padlock icon in the address bar, set Microphone to Allow, then reload the page.';
+                } else if (err.name === 'NotFoundError' || err.name === 'DevicesNotFoundError') {
+                    hint = 'No microphone found. Make sure a mic is connected and not disabled in your device settings.';
+                } else if (err.name === 'NotReadableError' || err.name === 'TrackStartError') {
+                    hint = 'Microphone is in use by another application. Close it and try again.';
+                } else if (err.name === 'OverconstrainedError') {
+                    hint = 'Microphone does not support the requested settings. Trying with defaults...';
+                    // Retry with minimal constraints
+                    try {
+                        audioStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                    } catch (retryErr) {
+                        showMicError('Microphone error: ' + retryErr.message);
+                        return;
+                    }
+                } else {
+                    hint = 'Error: ' + err.message + ' (' + err.name + ')';
+                }
+
+                if (hint && !audioStream) {
+                    showMicError(hint);
+                    return;
+                }
+            }
+
+            if (!audioStream) {
+                showMicError('Failed to access microphone. Please allow microphone permission and reload.');
+                return;
+            }
+
+            // Got the stream! Continue setting up the recorder
+            finishStartRecording();
+        }
+
+        // ==================== Microphone Error Display ====================
+        function showMicError(message) {
+            updateStatus('error', 'Mic Error');
+            permOverlay.querySelector('.perm-error-msg').textContent = message;
+            permOverlay.querySelector('.perm-error-msg').style.display = 'block';
+            permOverlay.classList.add('visible');
+        }
+
+        window.requestMicPermission = async function() {
+            // Try once more — this click IS a direct user gesture
+            try {
+                audioStream = await navigator.mediaDevices.getUserMedia({
+                    audio: { echoCancellation: true, noiseSuppression: true }
+                });
+                // Success — hide overlay and start recording
+                permOverlay.classList.remove('visible');
+                permOverlay.querySelector('.perm-error-msg').style.display = 'none';
+                // Continue to actually start recording
+                finishStartRecording();
+            } catch (err) {
+                let msg = '';
+                if (err.name === 'NotAllowedError') {
+                    msg = 'Permission denied. Open browser Settings > Site Settings > Microphone, allow access for this site, then reload.';
+                } else if (!window.isSecureContext) {
+                    msg = 'HTTPS required. Browsers block microphone on plain HTTP. Access via https:// or use localhost.';
+                } else {
+                    msg = err.message + ' (' + err.name + ')';
+                }
+                permOverlay.querySelector('.perm-error-msg').textContent = msg;
+            }
+        };
+
+        // The part of startRecording after we already have audioStream
+        function finishStartRecording() {
+            // Determine supported MIME type
+            let mimeType = 'audio/webm;codecs=opus';
+            if (!MediaRecorder.isTypeSupported(mimeType)) {
+                mimeType = 'audio/webm';
+            }
+            if (!MediaRecorder.isTypeSupported(mimeType)) {
+                mimeType = 'audio/mp4';
+            }
+            if (!MediaRecorder.isTypeSupported(mimeType)) {
+                mimeType = '';
+            }
+
+            const options = mimeType ? { mimeType } : {};
+            try {
+                mediaRecorder = new MediaRecorder(audioStream, options);
+            } catch (err) {
+                updateStatus('error', 'MediaRecorder init failed: ' + err.message);
+                return;
+            }
+
+            audioChunks = [];
+
+            mediaRecorder.ondataavailable = (e) => {
+                if (e.data.size > 0) {
+                    audioChunks.push(e.data);
+                }
+            };
+
+            mediaRecorder.start(1000); // collect data every second
+            setState('recording');
+            startTimer();
+            setupAnalyser();
+            drawLiveVisualizer();
+
+            updateStatus('recording', 'Recording');
+        }
+
+        function togglePause() {
+            if (state === 'recording') {
+                mediaRecorder.pause();
+                setState('paused');
+                stopTimer();
+                cancelAnimationFrame(animFrameId);
+                updateStatus('paused', 'Paused');
+            } else if (state === 'paused') {
+                mediaRecorder.resume();
+                setState('recording');
+                resumeTimer();
+                drawLiveVisualizer();
+                updateStatus('recording', 'Recording');
+            }
+        }
+
+        function discardRecording() {
+            if (state === 'recording' || state === 'paused') {
+                if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+                    mediaRecorder.stop();
+                }
+                stopStream();
+                audioChunks = [];
+                resetTimer();
+                setState('idle');
+                cancelAnimationFrame(animFrameId);
+                drawIdleVisualizer();
+                updateStatus('idle', 'Ready to Record');
+                hideResult();
+                hideProgress();
+            }
+        }
+
+        // ==================== Stop & Send ====================
+        async function stopAndSend() {
+            if (state !== 'recording' && state !== 'paused') return;
+
+            return new Promise((resolve) => {
+                mediaRecorder.onstop = async () => {
+                    stopStream();
+                    stopTimer();
+                    cancelAnimationFrame(animFrameId);
+                    setState('uploading');
+                    updateStatus('uploading', 'Uploading...');
+
+                    const mimeType = mediaRecorder.mimeType || 'audio/webm';
+                    const blob = new Blob(audioChunks, { type: mimeType });
+
+                    // Determine file extension
+                    let ext = 'webm';
+                    if (mimeType.includes('mp4')) ext = 'm4a';
+                    else if (mimeType.includes('ogg')) ext = 'ogg';
+
+                    const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+                    const courseSlug = courseNameIn.value.trim().replace(/\s+/g, '_') || 'lecture';
+                    const fileName = `${courseSlug}_${timestamp}.${ext}`;
+
+                    const baseUrl = serverUrlIn.value.trim().replace(/\/+$/, '');
+                    const uploadUrl = `${baseUrl}/upload-audio`;
+
+                    const formData = new FormData();
+                    formData.append('file', blob, fileName);
+                    const courseName = courseNameIn.value.trim();
+                    if (courseName) {
+                        formData.append('course_name', courseName);
+                    }
+
+                    showProgress();
+
+                    try {
+                        // Use XMLHttpRequest for upload progress tracking
+                        const data = await new Promise((res, rej) => {
+                            const xhr = new XMLHttpRequest();
+
+                            xhr.upload.onprogress = (e) => {
+                                if (e.lengthComputable) {
+                                    const pct = Math.round((e.loaded / e.total) * 100);
+                                    setProgress(pct, `Uploading... ${formatFileSize(e.loaded)} / ${formatFileSize(e.total)}`);
+                                }
+                            };
+
+                            xhr.onload = () => {
+                                if (xhr.status >= 200 && xhr.status < 300) {
+                                    try { res(JSON.parse(xhr.responseText)); } catch { res({}); }
+                                } else {
+                                    let errMsg = `Server returned ${xhr.status}`;
+                                    try { const d = JSON.parse(xhr.responseText); errMsg = d.detail || errMsg; } catch {}
+                                    rej(new Error(errMsg));
+                                }
+                            };
+
+                            xhr.onerror = () => rej(new Error('Network error — could not reach the server. Check the URL and ensure the server is running.'));
+                            xhr.ontimeout = () => rej(new Error('Upload timed out. The lecture may be too long for the server to process.'));
+
+                            xhr.open('POST', uploadUrl);
+                            xhr.timeout = 600000; // 10 min timeout for large lectures
+                            xhr.send(formData);
+                        });
+
+                        setProgress(100, 'Processing complete!');
+                        setTimeout(() => hideProgress(), 1000);
+
+                        setState('done');
+                        resetTimer();
+
+                        const sessionInfo = data.session_id ? `Session #${data.session_id}` : '';
+                        const topics = data.topics || [];
+                        let bodyText = `Audio processed successfully! ${sessionInfo} Transcript length: ${data.transcript_length || 0} characters.`;
+
+                        showResult(true, 'Lecture Uploaded & Processed', bodyText, topics);
+                        updateStatus('success', 'Done');
+                        drawIdleVisualizer();
+
+                    } catch (err) {
+                        hideProgress();
+                        setState('idle');
+                        resetTimer();
+                        updateStatus('error', 'Upload Failed');
+                        showResult(false, 'Upload Failed', err.message);
+                        drawIdleVisualizer();
+                    }
+
+                    resolve();
+                };
+                mediaRecorder.stop();
+            });
+        }
+
+        // ==================== Timer ====================
+        function startTimer() {
+            timerSeconds = 0;
+            updateTimerDisplay();
+            timerInterval = setInterval(() => {
+                timerSeconds++;
+                updateTimerDisplay();
+            }, 1000);
+        }
+
+        function stopTimer() {
+            clearInterval(timerInterval);
+        }
+
+        function resumeTimer() {
+            timerInterval = setInterval(() => {
+                timerSeconds++;
+                updateTimerDisplay();
+            }, 1000);
+        }
+
+        function resetTimer() {
+            stopTimer();
+            timerSeconds = 0;
+            updateTimerDisplay();
+            timerDisplay.className = 'timer';
+        }
+
+        function updateTimerDisplay() {
+            const mins = String(Math.floor(timerSeconds / 60)).padStart(2, '0');
+            const secs = String(timerSeconds % 60).padStart(2, '0');
+            timerDisplay.textContent = `${mins}:${secs}`;
+        }
+
+        // ==================== State Machine ====================
+        function setState(newState) {
+            state = newState;
+
+            // Reset all buttons
+            recordBtn.disabled = false;
+            pauseBtn.disabled = true;
+            discardBtn.disabled = true;
+            sendBtn.disabled = true;
+            recordBtn.classList.remove('is-recording');
+            pauseBtn.innerHTML = getPauseIcon();
+
+            timerDisplay.classList.remove('recording', 'paused');
+            serverUrlIn.disabled = false;
+            courseNameIn.disabled = false;
+
+            switch (state) {
+                case 'idle':
+                    recordBtn.disabled = false;
+                    break;
+
+                case 'recording':
+                    recordBtn.classList.add('is-recording');
+                    pauseBtn.disabled = false;
+                    discardBtn.disabled = false;
+                    sendBtn.disabled = false;
+                    timerDisplay.classList.add('recording');
+                    serverUrlIn.disabled = true;
+                    courseNameIn.disabled = true;
+                    break;
+
+                case 'paused':
+                    pauseBtn.disabled = false;
+                    discardBtn.disabled = false;
+                    sendBtn.disabled = false;
+                    timerDisplay.classList.add('paused');
+                    pauseBtn.innerHTML = getResumeIcon();
+                    serverUrlIn.disabled = true;
+                    courseNameIn.disabled = true;
+                    break;
+
+                case 'uploading':
+                    recordBtn.disabled = true;
+                    sendBtn.disabled = true;
+                    sendBtn.classList.add('uploading-active');
+                    sendBtn.innerHTML = getSpinnerIcon() + ' Processing on Server...';
+                    serverUrlIn.disabled = true;
+                    courseNameIn.disabled = true;
+                    break;
+
+                case 'done':
+                    sendBtn.classList.remove('uploading-active');
+                    sendBtn.innerHTML = getCheckIcon() + ' Stop & Send to Server';
+                    break;
+            }
+        }
+
+        // ==================== Status / UI ====================
+        function updateStatus(type, text) {
+            statusBadge.className = `status-badge ${type}`;
+            statusText.textContent = text;
+            statusDot.classList.toggle('pulse', type === 'recording' || type === 'uploading');
+        }
+
+        function showProgress() {
+            progressArea.classList.add('visible');
+            setProgress(0, 'Preparing upload...');
+        }
+        function hideProgress() {
+            progressArea.classList.remove('visible');
+        }
+        function setProgress(pct, label) {
+            progressFill.style.width = pct + '%';
+            progressLabel.textContent = label;
+        }
+
+        function showResult(success, title, body, topics = []) {
+            resultPanel.className = `result-panel visible ${success ? 'success' : 'error'}`;
+            resultTitle.textContent = title;
+            resultBody.textContent = body;
+
+            topicsList.innerHTML = '';
+            if (topics.length > 0) {
+                topics.forEach(t => {
+                    const tag = document.createElement('span');
+                    tag.className = 'topic-tag';
+                    tag.textContent = t;
+                    topicsList.appendChild(tag);
+                });
+            }
+
+            const baseUrl = serverUrlIn.value.trim().replace(/\/+$/, '');
+            navLinks.innerHTML = '';
+            if (success) {
+                addNavLink(`${baseUrl}/dashboard`, 'View Dashboard');
+                addNavLink(`${baseUrl}/student`, 'Student Survey');
+            }
+        }
+
+        function addNavLink(href, text) {
+            const a = document.createElement('a');
+            a.className = 'nav-link';
+            a.href = href;
+            a.textContent = text;
+            a.target = '_blank';
+            navLinks.appendChild(a);
+        }
+
+        function hideResult() {
+            resultPanel.className = 'result-panel';
+        }
+
+        // ==================== Audio Visualizer ====================
+        function setupAnalyser() {
+            if (!audioStream) return;
+            try {
+                const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                const source = audioCtx.createMediaStreamSource(audioStream);
+                analyser = audioCtx.createAnalyser();
+                analyser.fftSize = 256;
+                analyser.smoothingTimeConstant = 0.8;
+                source.connect(analyser);
+            } catch (err) {
+                console.warn('Audio analyser setup failed:', err);
+            }
+        }
+
+        function drawIdleVisualizer() {
+            const w = canvas.clientWidth;
+            const h = canvas.clientHeight;
+            canvasCtx.clearRect(0, 0, w, h);
+
+            // Draw subtle center line
+            canvasCtx.strokeStyle = 'rgba(255,255,255,0.06)';
+            canvasCtx.lineWidth = 1;
+            canvasCtx.beginPath();
+            canvasCtx.moveTo(0, h / 2);
+            canvasCtx.lineTo(w, h / 2);
+            canvasCtx.stroke();
+        }
+
+        function drawLiveVisualizer() {
+            const w = canvas.clientWidth;
+            const h = canvas.clientHeight;
+            canvasCtx.clearRect(0, 0, w, h);
+
+            if (!analyser) {
+                drawIdleVisualizer();
+                return;
+            }
+
+            const bufferLength = analyser.frequencyBinCount;
+            const dataArray = new Uint8Array(bufferLength);
+            analyser.getByteFrequencyData(dataArray);
+
+            const barCount = Math.min(bufferLength, 64);
+            const gap = 3;
+            const barWidth = (w - gap * (barCount - 1)) / barCount;
+
+            for (let i = 0; i < barCount; i++) {
+                const value = dataArray[i] / 255;
+                const barHeight = Math.max(2, value * h * 0.85);
+                const x = i * (barWidth + gap);
+                const y = (h - barHeight) / 2;
+
+                // Color gradient based on intensity
+                const r = Math.round(124 + value * 115);  // 124 -> 239
+                const g = Math.round(58 - value * 10);     // 58 -> 48
+                const b = Math.round(237 - value * 169);   // 237 -> 68
+
+                const alpha = 0.3 + value * 0.7;
+                canvasCtx.fillStyle = `rgba(${r}, ${g}, ${b}, ${alpha})`;
+                canvasCtx.beginPath();
+                canvasCtx.roundRect(x, y, barWidth, barHeight, 2);
+                canvasCtx.fill();
+            }
+
+            if (state === 'recording') {
+                animFrameId = requestAnimationFrame(drawLiveVisualizer);
+            }
+        }
+
+        // ==================== Stream Cleanup ====================
+        function stopStream() {
+            if (audioStream) {
+                audioStream.getTracks().forEach(track => track.stop());
+                audioStream = null;
+            }
+            analyser = null;
+        }
+
+        // ==================== Helpers ====================
+        function formatFileSize(bytes) {
+            if (bytes === 0) return '0 B';
+            const k = 1024;
+            const sizes = ['B', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
+        }
+
+        function getPauseIcon() {
+            return `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><rect x="6" y="4" width="4" height="16" rx="1"/><rect x="14" y="4" width="4" height="16" rx="1"/></svg>`;
+        }
+        function getResumeIcon() {
+            return `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M5.25 5.653c0-.856.917-1.398 1.667-.986l11.54 6.347a1.125 1.125 0 010 1.972l-11.54 6.347a1.125 1.125 0 01-1.667-.986V5.653z"/></svg>`;
+        }
+        function getSpinnerIcon() {
+            return `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" style="animation: spin 1s linear infinite; width:20px;height:20px;"><path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182"/></svg>`;
+        }
+        function getCheckIcon() {
+            return `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"/></svg>`;
+        }
+
+        // ==================== Bootstrap ====================
+        document.addEventListener('DOMContentLoaded', init);
+    })();
+    </script>
+</body>
+</html>
+
