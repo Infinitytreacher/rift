@@ -28,14 +28,3 @@ An ignore rule does not remove tracked files or grant redistribution rights.
 See [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) for dependency and model
 review requirements. The Free Software Foundation's copyright notice in
 `LICENSE` applies to the license document itself and remains unchanged.
-
-## Academic context
-
-RIFT was a project for AV321 Computer Networks at the Indian Institute of Space
-Science and Technology. The original academic team listing names Siddhant Tiwari,
-Mudit Sunil Fatehpur, Akshat Jiwane, and Divansh Verma. This listing preserves
-academic attribution. It does not assert code contributions by each team member.
-
-Course evaluation credit is distinct from software authorship. This license does
-not establish permission to publish institution-owned or course-restricted
-material. Resolve those permissions before publication.
